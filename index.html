@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Group 2 RPC Demo</title>
+    <style>
+      #url,
+#key,
+label[for="url"],
+label[for="key"] {
+    display: none !important;
+}
+      :root {
+        font-family:
+          system-ui,
+          Segoe UI,
+          Arial,
+          sans-serif;
+        color: #18233a;
+        background: #f3f6fb;
+      }
+      body {
+        max-width: 860px;
+        margin: 36px auto;
+        padding: 0 18px;
+      }
+      main {
+        background: #fff;
+        border: 1px solid #d8e1ef;
+        border-radius: 18px;
+        padding: 26px;
+        box-shadow: 0 10px 30px #16284a12;
+      }
+      h1 {
+        margin-top: 0;
+        color: #142341;
+      }
+      .sub {
+        color: #58677b;
+      }
+      label {
+        display: block;
+        font-weight: 650;
+        margin: 12px 0 6px;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+        border-radius: 9px;
+        padding: 10px 12px;
+        border: 1px solid #bcc9db;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      button {
+        cursor: pointer;
+        background: #2469c5;
+        color: white;
+        border: 0;
+        font-weight: 700;
+        margin: 8px 8px 0 0;
+      }
+      button.secondary {
+        background: #e8eef7;
+        color: #1d3558;
+      }
+      pre {
+        background: #101a2b;
+        color: #d7e8ff;
+        padding: 16px;
+        border-radius: 12px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        min-height: 80px;
+      }
+      .status {
+        font-weight: 700;
+        margin-top: 14px;
+      }
+      .good {
+        color: #12815e;
+      }
+      .bad {
+        color: #b42318;
+      }
+      .small {
+        font-size: 0.92rem;
+        color: #53627a;
+      }
+      .warning {
+        border-left: 4px solid #d98c25;
+        padding: 10px 14px;
+        background: #fff7e9;
+        margin: 18px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Group 2 — RPC Live Demo</h1>
+      <p class="sub">
+        Call a PostgreSQL function on Supabase from this browser page.
+        Successful result should be <b>8</b>.
+      </p>
+      <div class="warning">
+        <b>Safety:</b> use your project's project URL and anon/publishable key
+        only. Never put a service-role key in this page. This classroom demo
+        sends input to your own Supabase project.
+      </div>
+      <div style="display: none !important">
+        <label for="url">Supabase Project URL</label>
+        <input
+          id="url"
+          value="https://lwqbenuodlcuyolpvgnn.supabase.co"
+          placeholder="https://YOUR_PROJECT_REF.supabase.co"
+        />
+
+        <label for="key">Anon / publishable key</label>
+        <input
+          id="key"
+          value="sb_publishable_aP8sZCTQQvPl_OigMEO2Qw_G36fOh1M"
+          placeholder="Paste your anon or publishable key"
+          autocomplete="off"
+        />
+      </div>
+      <div class="grid">
+        <div>
+          <label for="a">Parameter a</label
+          ><input id="a" type="number" value="5" />
+        </div>
+        <div>
+          <label for="b">Parameter b</label
+          ><input id="b" type="number" value="3" />
+        </div>
+      </div>
+      <label for="mode">Demo scenario</label>
+      <select id="mode">
+        <option value="success">Success: add_numbers(5, 3)</option>
+        <option value="wrong">Mistake 1: wrong function name</option>
+        <option value="invalid">Mistake 2: invalid type (send a string)</option>
+      </select>
+      <div>
+        <button id="call">Call RPC</button>
+        <button class="secondary" id="clear">Clear output</button>
+      </div>
+      <div id="status" class="status">
+        Ready — configure credentials, then call RPC.
+      </div>
+      <h3>Request / response details</h3>
+      <pre id="output">No request sent yet.</pre>
+      <p class="small">
+        The browser calls Supabase's REST RPC endpoint. The PostgreSQL function
+        executes on the server. Exact error wording/status may differ by project
+        configuration.
+      </p>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      function safeUrl(s) {
+        return s.trim().replace(/\/+$/, "");
+      }
+      $("call").addEventListener("click", async () => {
+        const url = safeUrl($("url").value);
+        const key = $("key").value.trim();
+        if (!url || !key) {
+          $("status").textContent =
+            "Enter your Supabase URL and anon/publishable key first.";
+          $("status").className = "status bad";
+          return;
+        }
+        let fn = "add_numbers",
+          args = { a: Number($("a").value), b: Number($("b").value) };
+        const mode = $("mode").value;
+        if (mode === "wrong") fn = "add_number";
+        if (mode === "invalid") args = { a: "five", b: 3 };
+        const endpoint = url + "/rest/v1/rpc/" + fn;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const start = performance.now();
+        $("status").textContent = "Request in progress…";
+        $("status").className = "status";
+        $("output").textContent = JSON.stringify(
+          { method: "POST", url: endpoint, body: args },
+          null,
+          2,
+        );
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: key,
+              Authorization: "Bearer " + key,
+              Prefer: "return=representation",
+            },
+            body: JSON.stringify(args),
+            signal: controller.signal,
+          });
+          const raw = await response.text();
+          let parsed;
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            parsed = raw;
+          }
+          const ms = Math.round(performance.now() - start);
+          $("output").textContent = JSON.stringify(
+            {
+              httpStatus: response.status,
+              ok: response.ok,
+              durationMs: ms,
+              response: parsed,
+            },
+            null,
+            2,
+          );
+          if (response.ok) {
+            $("status").textContent =
+              "Success — server returned " + JSON.stringify(parsed);
+            $("status").className = "status good";
+          } else {
+            $("status").textContent =
+              "Request failed — inspect the actual status and response below.";
+            $("status").className = "status bad";
+          }
+        } catch (err) {
+          const msg =
+            err.name === "AbortError"
+              ? "Timed out after 8 seconds. The server may or may not have completed the operation."
+              : String(err);
+          $("status").textContent = msg;
+          $("status").className = "status bad";
+          $("output").textContent = JSON.stringify(
+            {
+              error: msg,
+              note: "A timeout or network failure does not prove the server did not execute the operation.",
+            },
+            null,
+            2,
+          );
+        } finally {
+          clearTimeout(timeout);
+        }
+      });
+      $("clear").addEventListener("click", () => {
+        $("status").textContent = "Ready.";
+        $("status").className = "status";
+        $("output").textContent = "No request sent yet.";
+      });
+    </script>
+  </body>
+</html>
